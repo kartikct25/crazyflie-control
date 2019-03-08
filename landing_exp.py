@@ -60,7 +60,7 @@ from cflib.crazyflie.syncLogger import SyncLogger
                                             
 # URI to the Crazyflie to connect to
 uri1 = 'radio://0/80/2M'
-uri2 = 'radio://0/85/2M'
+uri1 = 'radio://0/85/2M'
 uri3 = 'radio://0/100/2M'
 
 constPi = math.pi
@@ -251,8 +251,7 @@ if __name__ == '__main__':
         # Run experiment
         t = 0.0
         h = 0.05
-        lastRun = -h
-        experimentTimeout =4.0
+        experimentTimeout = 5.0
         timeIsUp = False
 
         maxAngle = 5.0
@@ -274,6 +273,8 @@ if __name__ == '__main__':
             csv_log = csv.writer(csv_file, delimiter=' ', quotechar='"', quoting=csv.QUOTE_NONE)
 
             while (t < experimentTimeout):
+                
+                controlCycleStart = time.time()
 
                 if flight.cfPos[2] > 0.6 or flight.cfPos[2] < -0.05:
                     print('Abnormal altitude ({:1.2f})'.format(flight.cfPos[2]))
@@ -284,12 +285,6 @@ if __name__ == '__main__':
                     break
 
                 t = time.time() - flight.flightStart
-
-                while ((t - lastRun) < h):
-                    time.sleep(0.005)
-                    t = time.time() - flight.flightStart
-                
-                lastRun = t
 
                 rollController.updateControl(-flight.cfPos[1], 0.0)
                 pitchController.updateControl(flight.cfPos[0], 0.0)
@@ -304,7 +299,14 @@ if __name__ == '__main__':
                 csv_log.writerow([t, flight.cfPos[0], flight.cfPos[1], flight.cfPos[2], flight.cfEuler[0], flight.cfEuler[1], flight.cfEuler[2], \
                     pitchController.saturatedControl(), rollController.saturatedControl(), 0.0, zRef, altiController.saturatedControl()])
 
-                # time.sleep(0.05) # Update delay
+                controlCycleEnd = time.time()
+
+                holdPeriod = h - (controlCycleEnd - controlCycleStart)
+
+                if holdPeriod > 0:
+                    time.sleep(holdPeriod)
+                else:
+                    print('WARNING! The control cycle exceeded the sampling period by {}s'.format(-holdPeriod))
 
                 if t > experimentTimeout:
                     timeIsUp = True
@@ -313,20 +315,20 @@ if __name__ == '__main__':
         print('Landing')
         t = time.time() - flight.flightStart
 
-        # while (flight.cfPos[2] > 0.1) and ((t - flight.flightStart) < experimentTimeout + 2.0):
+        while (flight.cfPos[2] > 0.1) and ((t - flight.flightStart) < experimentTimeout + 2.0):
 
-        #     rollController.updateControl(-flight.cfPos[1], 0.0)
-        #     pitchController.updateControl(flight.cfPos[0], 0.0)
-        #     altiController.updateControl(flight.cfPos[2], 0.1)
+            rollController.updateControl(-flight.cfPos[1], 0.0)
+            pitchController.updateControl(flight.cfPos[0], 0.0)
+            altiController.updateControl(flight.cfPos[2], 0.1)
 
-        #     cf.commander.send_setpoint(angleFactor*rollController.saturatedControl(), \
-        #         angleFactor*pitchController.saturatedControl(), \
-        #             0.0, \
-        #                 int(thrustFactor*(1.0+altiController.saturatedControl())))
+            cf.commander.send_setpoint(angleFactor*rollController.saturatedControl(), \
+                angleFactor*pitchController.saturatedControl(), \
+                    0.0, \
+                        int(thrustFactor*(1.0+altiController.saturatedControl())))
 
-        #     time.sleep(0.05) # Update delay
+            time.sleep(0.05) # Update delay
 
-        #     t = time.time() - flight.flightStart
+            t = time.time() - flight.flightStart
 
         cf.commander.send_setpoint(0.0, 0.0, 0.0, 0)
 
