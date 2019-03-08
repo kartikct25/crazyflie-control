@@ -251,7 +251,7 @@ if __name__ == '__main__':
         # Run experiment
         t = 0.0
         h = 0.05
-        experimentTimeout = 5.0
+        experimentTimeout = 15.0
         timeIsUp = False
 
         maxAngle = 5.0
@@ -265,6 +265,10 @@ if __name__ == '__main__':
         thrustFactor = 33.03e3
 
         altiController = PID(1.1e0, 7.0e-1, 3.9e-1, -0.7, 65e3/2/thrustFactor)
+
+        amplitude = 0.1
+        period = 4
+        omega = 1/period * 2*math.pi
 
         zRef = 0.3
 
@@ -289,7 +293,9 @@ if __name__ == '__main__':
                 rollController.updateControl(-flight.cfPos[1], 0.0)
                 pitchController.updateControl(flight.cfPos[0], 0.0)
 
-                altiController.updateControl(flight.cfPos[2], 0.3)
+                zOsc = zRef + amplitude * math.sin(omega * t)
+
+                altiController.updateControl(flight.cfPos[2], zOsc)
 
                 cf.commander.send_setpoint(angleFactor*rollController.saturatedControl(), \
                     angleFactor*pitchController.saturatedControl(), \
@@ -297,7 +303,7 @@ if __name__ == '__main__':
                             int(thrustFactor*(1.0+altiController.saturatedControl())))
 
                 csv_log.writerow([t, flight.cfPos[0], flight.cfPos[1], flight.cfPos[2], flight.cfEuler[0], flight.cfEuler[1], flight.cfEuler[2], \
-                    pitchController.saturatedControl(), rollController.saturatedControl(), 0.0, zRef, altiController.saturatedControl()])
+                    pitchController.saturatedControl(), rollController.saturatedControl(), 0.0, zOsc, altiController.saturatedControl()])
 
                 controlCycleEnd = time.time()
 
