@@ -13,31 +13,44 @@ T = CSV(:, 12);
 %% Plots
 set(0,'defaulttextInterpreter','latex')
 
-figure(1)
-posPlot = plot(t, Pos(:,1),'r', t, Pos(:,2), 'g', t, Pos(:,3), 'b')
-legend('X','Y','Z')
+figure(1);
+[axes, xyPlot, zPlot] = plotyy(t, Pos(:,1:2), t, Pos(:,3) );
+xyPlot(1).Color = 'r'; xyPlot(2).Color = 'g'; zPlot(1).Color = 'b';
+legend('X','Y','Z');
 xlabel('Time [s]');
-ylabel('Position [m]');
-% axObjs = posPlot.Children
-% dataObjs = axObjs.Children
+axes(1).YLabel.String = 'Horizontal Position [m]';
+axes(1).XLim = [min(t) max(t)];
+axes(1).YLim = [-1.1*max(max(abs(Pos(:,1:2)))) 1.1*max(max(abs(Pos(:,1:2))))];
+axes(2).YLabel.String = 'Vertical Position [m]';
+axes(2).XLim = axes(1).XLim;
+axes(2).YLim = [0 1.1*max(Pos(:,3))];
+axes(2).YColor = 'b'
 
-% posChild = posPlot.Children;
-% axes = gca;
-
-figure(2)
-subplot(2, 1, 1)
-attiPlot = plot(t, Euler)
+figure(2);
+% subplot(2, 1, 1);
+attiPlot = plot(t, Euler);
 attiPlot(1).Color = 'r'; attiPlot(2).Color = 'g'; attiPlot(3).Color = 'b';
+axes = gca;
+axes.XLim=[min(t) max(t)];
 
-legend('\theta','\phi','\psi')
-subplot(2, 1, 2)
-attiRefPlot = plot(t, Refs)
+legend('\theta','\phi','\psi');
+% subplot(2, 1, 2);
+attiRefPlot = plot(t, Refs(:,1:3));
 attiRefPlot(1).Color = 'r'; attiRefPlot(2).Color = 'g'; attiRefPlot(3).Color = 'b';
-legend('\theta_r','\phi_r','\psi_r', 'Z_r')
-
+axes = gca;
+axes.XLim=[min(t) max(t)];
+legend('\theta_r','\phi_r','\psi_r');
 
 figure(3)
-controlPlot = plot(t, [T Pos(:,3) Refs(:,4)])
-controlPlot(1).Color = 'm'; controlPlot(2).Color = 'b'; controlPlot(3).Color = 'k';
-controlPlot(3).LineStyle = '--';
-legend('Thrust','Z','Z_r','--')
+[axes, controlPlot, posPlot] = plotyy(t, T, t, [Pos(:,3) Refs(:,4)]);
+controlPlot(1).Color = 'm';
+posPlot(1).Color = 'b'; posPlot(2).Color = 'k';
+posPlot(2).LineStyle = '--';
+legend('Thrust','Z','Z_r');
+axes(1).YLabel.String = 'Thrust';
+axes(1).XLim = [min(t) max(t)];
+axes(1).YColor = 'm'
+axes(2).YLabel.String = 'Vertical Position [m]';
+axes(2).XLim = axes(1).XLim;
+axes(2).YLim = [0 2*mean(Refs(:,4))];
+axes(2).YColor = 'b'
