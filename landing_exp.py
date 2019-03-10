@@ -60,8 +60,8 @@ from cflib.crazyflie.syncLogger import SyncLogger
                                             
 # URI to the Crazyflie to connect to
 uri1 = 'radio://0/80/2M'
-uri1 = 'radio://0/85/2M'
-uri3 = 'radio://0/100/2M'
+uri2 = 'radio://0/85/2M'
+uri1 = 'radio://0/100/2M'
 
 constPi = math.pi
 
@@ -213,10 +213,6 @@ def run_sequence(cf, trajectory_id, duration):
     commander.go_to(0.0, 0.0, 1.0, constPi, 2.0)
     time.sleep(2.0)
 
-
-
-
-
 """
   __  __       _       
  |  \/  |     (_)      
@@ -255,26 +251,28 @@ if __name__ == '__main__':
         timeIsUp = False
 
         maxAngle = 5.0
-        angleFactor = 10.0
+        angleFactor = 20.0
         maxPos = 0.25
         #                      P    I    D
-        rollController  = PID(1.0, 0.01, 0.2, -maxAngle, maxAngle)
-        pitchController = PID(1.0, 0.01, 0.2, -maxAngle, maxAngle)
+        rollController  = PID(1.0, 0.01, 0.3, -maxAngle, maxAngle)
+        pitchController = PID(1.0, 0.01, 0.3, -maxAngle, maxAngle)
         # yawController   = PID(1.0, 0.0, 0.3, -1e8     , 1e8)
 
         thrustFactor = 33.03e3
 
         altiController = PID(1.1e0, 7.0e-1, 3.9e-1, -0.7, 65e3/2/thrustFactor)
 
-        amplitude = 0.1
+        amplitude = 0.0
         period = 4
         omega = 1/period * 2*math.pi
 
         zRef = 0.3
 
-        print('Battery status: {}'.format(flight.cfBattery))
         with open('CSV_landing.txt', mode='w', newline='') as csv_file:
+
             csv_log = csv.writer(csv_file, delimiter=' ', quotechar='"', quoting=csv.QUOTE_NONE)
+
+            flight.resetFlightStartTime()
 
             while (t < experimentTimeout):
                 
