@@ -89,3 +89,6 @@ class CrazyFlight:
                 print(i[0])
         else:
             print('No Crazyflies found, cannot run example')
+
+    def resetFlightStartTime(self):
+        self.flightStart = time.time()
