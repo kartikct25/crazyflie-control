@@ -33,15 +33,10 @@ attiPlot(1).Color = 'r'; attiPlot(2).Color = 'g'; attiPlot(3).Color = 'b';
 attiPlot(4).Color = 'r'; attiPlot(5).Color = 'g'; attiPlot(6).Color = 'b';
 attiPlot(4).LineStyle = '--'; attiPlot(5).LineStyle = '--'; attiPlot(6).LineStyle = '--';
 axes = gca;
-axes.XLim=[min(t) max(t)];
-
+axes.XLim = [min(t) max(t)];
+yExtreme = max(max(abs(Euler)));
+axes.YLim = [-yExtreme yExtreme];
 legend('\theta', '\phi', '\psi', '\theta_r', '\phi_r', '\psi_r');
-% subplot(2, 1, 2);
-% attiRefPlot = plot(t, Refs(:,1:3));
-% attiRefPlot(1).Color = 'r'; attiRefPlot(2).Color = 'g'; attiRefPlot(3).Color = 'b';
-% axes = gca;
-% axes.XLim=[min(t) max(t)];
-% legend('\theta_r','\phi_r','\psi_r');
 
 figure(3)
 [axes, controlPlot, posPlot] = plotyy(t, T, t, [Pos(:,3) Refs(:,4)]);
