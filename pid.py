@@ -1,32 +1,9 @@
 #import numpy as np
 import time
+from collections import deque
+import itertools
 
 class PID:
-    histSize = 2
-
-    # minSat = 0.0
-    # maxSat = 1.0
-
-    # kP = 1.0
-    # kI = 0.1
-    # kD = -0.3
-
-    # output = 0.0
-    # outputHist = [0.0 for x in range(histSize)]
-
-    # outputP = 0.0
-    # outputI = 0.0
-    # outputD = 0.0
-
-    # errorHist = [0.0 for x in range(histSize)]
-    # timeHist = [0.0 for x in range(histSize)]
-
-    # integralState = 0.0
-
-    # lastUpdate = 0.0
-
-    # isRunning = False
-
     def __init__(self, kP = 1.0, kI = 0.1, kD = -0.3, minSat = -1e8, maxSat = 1e8):
         self.dFilterState = 0.0
         self.kP = kP
@@ -41,14 +18,15 @@ class PID:
 
         self.output = 0.0
 
-        self.outputHist = [0.0 for x in range(self.histSize)]
-
         self.outputP = 0.0
         self.outputI = 0.0
         self.outputD = 0.0
 
-        self.errorHist = [0.0 for x in range(self.histSize)]
-        self.timeHist = [0.0 for x in range(self.histSize)]
+        self._histSize = None
+        self.outputHist = deque()
+        self.errorHist  = deque()
+        self.timeHist   = deque()
+        self.setHistorySize(2)
 
         self.integralState = 0.0
 
@@ -57,6 +35,24 @@ class PID:
         self.isRunning = False
 
         self.timeHist[0] = time.time()
+
+    def setHistorySize(self, size):
+        if (size < 0):
+            return
+        size_old = len(self.outputHist)
+        if size_old < size:
+            tmp = (size - size_old) * [0]
+            self.outputHist.extend(tmp)
+            self.errorHist.extend(tmp)
+            self.timeHist.extend(tmp)
+        elif size_old > size:
+            self.outputHist = deque( itertools.slice(self.outputHist, 0, size) )
+            self.errorHist  = deque( itertools.slice(self.outputHist, 0, size) )
+            self.timetHist  = deque( itertools.slice(self.outputHist, 0, size) )
+        self._histSize = size
+
+    def getHistorySize(self):
+        return self._histSize
 
     def updateControl(self, plantOutput = 0.0, reference = 0.0):
         # Compute Error
@@ -70,12 +66,12 @@ class PID:
             lastDeltaT = time.time() - self.lastUpdate
         self.lastUpdate = time.time()
 
-        # Append it to history
-        for i in range(self.histSize-1, 0, -1):
-            self.errorHist[i] = self.errorHist[i - 1]
-            self.timeHist[i] = self.timeHist[i - 1]
-        self.errorHist[0] = error
+        # Shift history and insert data (output will be added later)
+        self.errorHist.rotate(1)
+        self.outputHist.rotate(1)
+        self.timeHist.rotate(1)
         self.timeHist[0] = self.lastUpdate
+        self.errorHist[0] = error
 
         # Compute Control Terms
         self.outputP = self.kP * error
@@ -85,6 +81,9 @@ class PID:
 
         # Compute Output
         self.output = self.outputP + self.outputI +  self.outputD
+
+        # Add output to history
+        self.outputHist[0] = self.output
 
     def saturatedControl(self):
 
