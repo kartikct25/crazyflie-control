@@ -54,7 +54,7 @@ class PID:
     def getHistorySize(self):
         return self._histSize
 
-    def updateControl(self, plantOutput = 0.0, reference = 0.0):
+    def updateControl(self, plantOutput, reference):
         # Compute Error
         error =  reference - plantOutput
 
@@ -86,7 +86,6 @@ class PID:
         self.outputHist[0] = self.output
 
     def saturatedControl(self):
-
         if (self.output < self.maxSat and self.output > self.minSat): # If the output is within bounds, no saturation needed
             return self.output
             
