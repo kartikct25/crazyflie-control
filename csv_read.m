@@ -10,6 +10,10 @@ Refs = CSV(:, 8:11);
 
 T = CSV(:, 12);
 
+window = round(size(T,1)/20);
+
+filteredT = filter(1/window*ones(1,window),[1], T);
+
 %% Plots
 set(0,'defaulttextInterpreter','latex')
 
@@ -39,11 +43,11 @@ axes.YLim = [-yExtreme yExtreme];
 legend('\theta', '\phi', '\psi', '\theta_r', '\phi_r', '\psi_r');
 
 figure(3)
-[axes, controlPlot, posPlot] = plotyy(t, T, t, [Pos(:,3) Refs(:,4)]);
+[axes, controlPlot, posPlot] = plotyy(t, [T filteredT], t, [Pos(:,3) Refs(:,4)]);
 controlPlot(1).Color = 'm';
 posPlot(1).Color = 'b'; posPlot(2).Color = 'k';
 posPlot(2).LineStyle = '--';
-legend('Thrust','Z','Z_r');
+legend('Thrust','Filtered Thrust','Z','Z_r');
 axes(1).YLabel.String = 'Thrust';
 axes(1).XLim = [min(t) max(t)];
 axes(1).YColor = 'm'
@@ -51,3 +55,14 @@ axes(2).YLabel.String = 'Vertical Position [m]';
 axes(2).XLim = axes(1).XLim;
 axes(2).YLim = [0 2*mean(Refs(:,4))];
 axes(2).YColor = 'b'
+
+figure(4)
+Fs = 1/mean(diff(t));
+L = size(Pos(:,3),1);
+NFFT = 2^nextpow2(L); % Next power of 2 from length of y
+f = Fs/2*linspace(0,1,NFFT/2+1);
+Y = fft(Pos(:,3),NFFT)/L;
+plot(f,2*abs(Y(1:NFFT/2+1)));
+title('Single-Sided Amplitude Spectrum of Z(t)')
+xlabel('Frequency (Hz)')
+ylabel('|FFT(f)|')
