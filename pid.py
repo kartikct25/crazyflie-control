@@ -28,6 +28,7 @@ class PID:
     # isRunning = False
 
     def __init__(self, kP = 1.0, kI = 0.1, kD = -0.3, minSat = -1e8, maxSat = 1e8):
+        self.dFilterState = 0.0
         self.kP = kP
         self.kI = kI
         self.kD = kD
@@ -104,7 +105,9 @@ class PID:
 
     def derivative(self):
         if (self.timeHist[0] != self.timeHist[1]): # Case taken into consideration since it can produce division by zero
-            return ((self.errorHist[0] - self.errorHist[1]) / (self.timeHist[0] - self.timeHist[1]))
+            # return ((self.errorHist[0] - self.errorHist[1]) / (self.timeHist[0] - self.timeHist[1]))
+            self.dFilterState = 0.4724 * self.dFilterState + 2.0 * self.errorHist[0] # Discrete Filter implementation for h = 0.05 and N = 15
+            return (-3.9573 * self.dFilterState + 15.0 * self.errorHist[0])
         else:
             return 0.0  # Should only happen in the first iteration of the controller. Unlikely to cause trouble.
 
