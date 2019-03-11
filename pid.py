@@ -22,10 +22,10 @@ class PID:
         self.outputI = 0.0
         self.outputD = 0.0
 
-        self._histSize = None
-        self.outputHist = deque()
-        self.errorHist  = deque()
-        self.timeHist   = deque()
+        self.__histSize = None
+        self.__outputHist = deque()
+        self.__errorHist  = deque()
+        self.__timeHist   = deque()
         self.setHistorySize(2)
 
         self.integralState = 0.0
@@ -34,25 +34,25 @@ class PID:
 
         self.isRunning = False
 
-        self.timeHist[0] = time.time()
+        self.__timeHist[0] = time.time()
 
     def setHistorySize(self, size):
         if (size < 0):
             return
-        size_old = len(self.outputHist)
+        size_old = len(self.__outputHist)
         if size_old < size:
             tmp = (size - size_old) * [0]
-            self.outputHist.extend(tmp)
-            self.errorHist.extend(tmp)
-            self.timeHist.extend(tmp)
+            self.__outputHist.extend(tmp)
+            self.__errorHist.extend(tmp)
+            self.__timeHist.extend(tmp)
         elif size_old > size:
-            self.outputHist = deque( itertools.slice(self.outputHist, 0, size) )
-            self.errorHist  = deque( itertools.slice(self.outputHist, 0, size) )
-            self.timetHist  = deque( itertools.slice(self.outputHist, 0, size) )
-        self._histSize = size
+            self.__outputHist = deque( itertools.slice(self.__outputHist, 0, size) )
+            self.__errorHist  = deque( itertools.slice(self.__outputHist, 0, size) )
+            self.timetHist  = deque( itertools.slice(self.__outputHist, 0, size) )
+        self.__histSize = size
 
     def getHistorySize(self):
-        return self._histSize
+        return self.__histSize
 
     def updateControl(self, plantOutput, reference):
         # Compute Error
@@ -67,23 +67,23 @@ class PID:
         self.lastUpdate = time.time()
 
         # Shift history and insert data (output will be added later)
-        self.errorHist.rotate(1)
-        self.outputHist.rotate(1)
-        self.timeHist.rotate(1)
-        self.timeHist[0] = self.lastUpdate
-        self.errorHist[0] = error
+        self.__errorHist.rotate(1)
+        self.__outputHist.rotate(1)
+        self.__timeHist.rotate(1)
+        self.__timeHist[0] = self.lastUpdate
+        self.__errorHist[0] = error
 
         # Compute Control Terms
         self.outputP = self.kP * error
-        self.outputD = self.kD * self.derivative()
-        self.integralState += self.integrate()
+        self.outputD = self.kD * self.__differentiate()
+        self.integralState += self.__integrate()
         self.outputI = self.kI * self.integralState
 
         # Compute Output
         self.output = self.outputP + self.outputI +  self.outputD
 
         # Add output to history
-        self.outputHist[0] = self.output
+        self.__outputHist[0] = self.output
 
     def saturatedControl(self):
         if (self.output < self.maxSat and self.output > self.minSat): # If the output is within bounds, no saturation needed
@@ -95,17 +95,16 @@ class PID:
             else: # If it is above the maximum saturation, use the maximum saturation
                 return self.maxSat
 
-    def integrate(self):
-        if (self.output < self.maxSat and self.output > self.minSat) and self.timeHist[1] != 0.0: # Only integrate if unsaturated.
-            return ((self.errorHist[0] + self.errorHist[1]) / 2 * (self.timeHist[0] - self.timeHist[1]))
+    def __integrate(self):
+        if (self.output < self.maxSat and self.output > self.minSat) and self.__timeHist[1] != 0.0: # Only integrate if unsaturated.
+            return ((self.__errorHist[0] + self.__errorHist[1]) / 2 * (self.__timeHist[0] - self.__timeHist[1]))
         else:
             return 0.0
 
-    def derivative(self):
-        if (self.timeHist[0] != self.timeHist[1]): # Case taken into consideration since it can produce division by zero
-            # return ((self.errorHist[0] - self.errorHist[1]) / (self.timeHist[0] - self.timeHist[1]))
-            self.dFilterState = 0.4724 * self.dFilterState + 2.0 * self.errorHist[0] # Discrete Filter implementation for h = 0.05 and N = 15
-            return (-3.9573 * self.dFilterState + 15.0 * self.errorHist[0])
+    def __differentiate(self):
+        if (self.__timeHist[0] != self.__timeHist[1]): # Case taken into consideration since it can produce division by zero
+            self.dFilterState = 0.4724 * self.dFilterState + 2.0 * self.__errorHist[0] # Discrete Filter implementation for h = 0.05 and N = 15
+            return (-3.9573 * self.dFilterState + 15.0 * self.__errorHist[0])
         else:
             return 0.0  # Should only happen in the first iteration of the controller. Unlikely to cause trouble.
 
