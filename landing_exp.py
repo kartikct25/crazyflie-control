@@ -61,7 +61,7 @@ from cflib.crazyflie.syncLogger import SyncLogger
 # URI to the Crazyflie to connect to
 uri1 = 'radio://0/80/2M'
 uri2 = 'radio://0/85/2M'
-uri1 = 'radio://0/100/2M'
+uri3 = 'radio://0/100/2M'
 
 constPi = math.pi
 
@@ -241,32 +241,34 @@ if __name__ == '__main__':
 
         # Go to experiment location
         print('Taking off')
-        # cf.high_level_commander.takeoff(0.25, 0.5)
-        # time.sleep(1.0)
 
         # Run experiment
         t = 0.0
         h = 0.05
-        experimentTimeout = 15.0
+        experimentTimeout = 20.0
         timeIsUp = False
 
         maxAngle = 5.0
         angleFactor = 20.0
         maxPos = 0.25
         #                      P    I    D
-        rollController  = PID(1.0, 0.01, 0.3, -maxAngle, maxAngle)
-        pitchController = PID(1.0, 0.01, 0.3, -maxAngle, maxAngle)
+        rollController  = PID(1.0, 0.01, 0.5, -maxAngle, maxAngle)
+        pitchController = PID(1.0, 0.01, 0.5, -maxAngle, maxAngle)
         # yawController   = PID(1.0, 0.0, 0.3, -1e8     , 1e8)
 
         thrustFactor = 33.03e3
 
-        altiController = PID(1.1e0, 7.0e-1, 3.9e-1, -0.7, 65e3/2/thrustFactor)
+        altiController = PID(1.1e0, 7.0e-1,7.0e-1, -0.5, 65e3/2/thrustFactor)
 
         amplitude = 0.0
         period = 4
         omega = 1/period * 2*math.pi
 
-        zRef = 0.3
+        zRef = 0.40
+
+        lastAltiReduc = 0.0
+        timeAtAlti = 10.0
+        altiReducStep = 0.0
 
         with open('CSV_landing.txt', mode='w', newline='') as csv_file:
 
@@ -274,8 +276,12 @@ if __name__ == '__main__':
 
             flight.resetFlightStartTime()
 
+            cf.param.set_value('ground.level', '{:1.16f}'.format(0.0))
+
             while (t < experimentTimeout):
                 
+                # Control cycle start
+
                 controlCycleStart = time.time()
 
                 if flight.cfPos[2] > 0.6 or flight.cfPos[2] < -0.05:
@@ -292,16 +298,28 @@ if __name__ == '__main__':
                 pitchController.updateControl(flight.cfPos[0], 0.0)
 
                 zOsc = zRef + amplitude * math.sin(omega * t)
+                zOscDot = omega * amplitude * math.cos(omega * t)
 
                 altiController.updateControl(flight.cfPos[2], zOsc)
+                
+                ffControl = 0.0 * zOsc + 0.0 * zOscDot
+
+                thrustControl = int( \
+                    thrustFactor * (1.0 + altiController.saturatedControl()) + ffControl    \
+                        )
 
                 cf.commander.send_setpoint(angleFactor*rollController.saturatedControl(), \
                     angleFactor*pitchController.saturatedControl(), \
-                        0.0, \
-                            int(thrustFactor*(1.0+altiController.saturatedControl())))
+                        0.0, thrustControl)
 
                 csv_log.writerow([t, flight.cfPos[0], flight.cfPos[1], flight.cfPos[2], flight.cfEuler[0], flight.cfEuler[1], flight.cfEuler[2], \
                     pitchController.saturatedControl(), rollController.saturatedControl(), 0.0, zOsc, altiController.saturatedControl()])
+
+                if t - lastAltiReduc >= timeAtAlti:
+                    zRef -= altiReducStep
+                    lastAltiReduc = math.floor(t)
+
+                # Control cycle end
 
                 controlCycleEnd = time.time()
 
@@ -311,9 +329,6 @@ if __name__ == '__main__':
                     time.sleep(holdPeriod)
                 else:
                     print('WARNING! The control cycle exceeded the sampling period by {}s'.format(-holdPeriod))
-
-                if t > experimentTimeout:
-                    timeIsUp = True
 
         # Get back
         print('Landing')
