@@ -66,13 +66,6 @@ class PID:
             lastDeltaT = now - self.lastUpdate
         self.lastUpdate = now
 
-        # Shift history and insert data (output will be added later)
-        self.__errorHist.rotate(1)
-        self.__outputHist.rotate(1)
-        self.__timeHist.rotate(1)
-        self.__timeHist[0] = self.lastUpdate
-        self.__errorHist[0] = error
-
         # Compute Control Terms
         self.outputP = self.kP * error
         self.outputD = self.kD * self.__differentiate()
@@ -82,7 +75,12 @@ class PID:
         # Compute Output
         self.output = self.outputP + self.outputI +  self.outputD
 
-        # Add output to history
+        # Shift history and insert data
+        self.__errorHist.rotate(1)
+        self.__outputHist.rotate(1)
+        self.__timeHist.rotate(1)
+        self.__timeHist[0] = self.lastUpdate
+        self.__errorHist[0] = error
         self.__outputHist[0] = self.output
 
     def saturatedControl(self):
