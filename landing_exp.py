@@ -294,13 +294,13 @@ if __name__ == '__main__':
 
                 t = time.time() - flight.flightStart
 
-                rollController.updateControl(-flight.cfPos[1], 0.0)
-                pitchController.updateControl(flight.cfPos[0], 0.0)
+                rollController.updateControl(t, -flight.cfPos[1], 0.0)
+                pitchController.updateControl(t, flight.cfPos[0], 0.0)
 
                 zOsc = zRef + amplitude * math.sin(omega * t)
                 zOscDot = omega * amplitude * math.cos(omega * t)
 
-                altiController.updateControl(flight.cfPos[2], zOsc)
+                altiController.updateControl(t, flight.cfPos[2], zOsc)
                 
                 ffControl = 0.0 * zOsc + 0.0 * zOscDot
 
@@ -336,9 +336,9 @@ if __name__ == '__main__':
 
         while (flight.cfPos[2] > 0.1) and ((t - flight.flightStart) < experimentTimeout + 2.0):
 
-            rollController.updateControl(-flight.cfPos[1], 0.0)
-            pitchController.updateControl(flight.cfPos[0], 0.0)
-            altiController.updateControl(flight.cfPos[2], 0.1)
+            rollController.updateControl(t, -flight.cfPos[1], 0.0)
+            pitchController.updateControl(t, flight.cfPos[0], 0.0)
+            altiController.updateControl(t, flight.cfPos[2], 0.1)
 
             cf.commander.send_setpoint(angleFactor*rollController.saturatedControl(), \
                 angleFactor*pitchController.saturatedControl(), \

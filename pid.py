@@ -54,7 +54,7 @@ class PID:
     def getHistorySize(self):
         return self.__histSize
 
-    def updateControl(self, plantOutput, reference):
+    def updateControl(self, now, plantOutput, reference):
         # Compute Error
         error =  reference - plantOutput
 
@@ -63,8 +63,8 @@ class PID:
             lastDeltaT = 0.0
             self.isRunning = True
         else:
-            lastDeltaT = time.time() - self.lastUpdate
-        self.lastUpdate = time.time()
+            lastDeltaT = now - self.lastUpdate
+        self.lastUpdate = now
 
         # Shift history and insert data (output will be added later)
         self.__errorHist.rotate(1)
@@ -127,7 +127,7 @@ if __name__ == '__main__':
     y = 0.1
     for i in range(0,10):
         y += controller.output/5
-        controller.updateControl(y, reference)
+        controller.updateControl(time.time(), y, reference)
     
         print('The control for the reference {:1.2f} when the output is {:1.2f} is {:1.2f} (P: {:1.2f}, I: {:1.2f}, D: {:1.2f})'.format(reference,y, controller.output, controller.outputP, controller.outputI, controller.outputD))
 
