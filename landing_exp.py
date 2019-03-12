@@ -334,7 +334,7 @@ if __name__ == '__main__':
         print('Landing')
         t = time.time() - flight.flightStart
 
-        while (flight.cfPos[2] > 0.1) and ((t - flight.flightStart) < experimentTimeout + 2.0):
+        while (flight.cfPos[2] > 0.1) and (t < experimentTimeout + 2.0):
 
             rollController.updateControl(t, -flight.cfPos[1], 0.0)
             pitchController.updateControl(t, flight.cfPos[0], 0.0)
