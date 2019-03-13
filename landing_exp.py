@@ -245,7 +245,7 @@ if __name__ == '__main__':
         # Run experiment
         t = 0.0
         h = 0.05
-        experimentTimeout = 20.0
+        experimentTimeout = 30.0
         timeIsUp = False
 
         maxAngle = 5.0
@@ -264,11 +264,13 @@ if __name__ == '__main__':
         period = 4
         omega = 1/period * 2*math.pi
 
-        zRef = 0.40
+        zRef = 0.50
 
         lastAltiReduc = 0.0
         timeAtAlti = 10.0
-        altiReducStep = 0.0
+        altiReducStep = 0.1
+
+        alreadyChanged = False
 
         with open('CSV_landing.txt', mode='w', newline='') as csv_file:
 
@@ -294,13 +296,13 @@ if __name__ == '__main__':
 
                 t = time.time() - flight.flightStart
 
-                rollController.updateControl(t, -flight.cfPos[1], 0.0)
-                pitchController.updateControl(t, flight.cfPos[0], 0.0)
+                rollController.updateControl(-flight.cfPos[1], 0.0)
+                pitchController.updateControl(flight.cfPos[0], 0.0)
 
                 zOsc = zRef + amplitude * math.sin(omega * t)
                 zOscDot = omega * amplitude * math.cos(omega * t)
 
-                altiController.updateControl(t, flight.cfPos[2], zOsc)
+                altiController.updateControl(flight.cfPos[2], zOsc)
                 
                 ffControl = 0.0 * zOsc + 0.0 * zOscDot
 
@@ -315,9 +317,11 @@ if __name__ == '__main__':
                 csv_log.writerow([t, flight.cfPos[0], flight.cfPos[1], flight.cfPos[2], flight.cfEuler[0], flight.cfEuler[1], flight.cfEuler[2], \
                     pitchController.saturatedControl(), rollController.saturatedControl(), 0.0, zOsc, altiController.saturatedControl()])
 
-                if t - lastAltiReduc >= timeAtAlti:
+                if ((t - lastAltiReduc) >= timeAtAlti) and (alreadyChanged == False):
                     zRef -= altiReducStep
                     lastAltiReduc = math.floor(t)
+                    amplitude = 0.1
+                    alreadyChanged = True
 
                 # Control cycle end
 
@@ -334,11 +338,11 @@ if __name__ == '__main__':
         print('Landing')
         t = time.time() - flight.flightStart
 
-        while (flight.cfPos[2] > 0.1) and (t < experimentTimeout + 2.0):
+        while (flight.cfPos[2] > 0.1) and ((t - flight.flightStart) < experimentTimeout + 2.0):
 
-            rollController.updateControl(t, -flight.cfPos[1], 0.0)
-            pitchController.updateControl(t, flight.cfPos[0], 0.0)
-            altiController.updateControl(t, flight.cfPos[2], 0.1)
+            rollController.updateControl(-flight.cfPos[1], 0.0)
+            pitchController.updateControl(flight.cfPos[0], 0.0)
+            altiController.updateControl(flight.cfPos[2], 0.1)
 
             cf.commander.send_setpoint(angleFactor*rollController.saturatedControl(), \
                 angleFactor*pitchController.saturatedControl(), \
