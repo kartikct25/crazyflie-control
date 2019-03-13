@@ -61,7 +61,7 @@ from cflib.crazyflie.syncLogger import SyncLogger
 # URI to the Crazyflie to connect to
 uri1 = 'radio://0/80/2M'
 uri2 = 'radio://0/85/2M'
-uri3 = 'radio://0/100/2M'
+uri1 = 'radio://0/100/2M'
 
 constPi = math.pi
 
@@ -108,21 +108,6 @@ voltaLEAD = [
 #  | |  | |/ _ \  _| | '_ \| | __| |/ _ \| '_ \/ __|
 #  | |__| |  __/ | | | | | | | |_| | (_) | | | \__ \
 #  |_____/ \___|_| |_|_| |_|_|\__|_|\___/|_| |_|___/                         
-
-class Uploader:
-    def __init__(self):
-        self._is_done = False
-
-    def upload(self, trajectory_mem):
-        print('Uploading data')
-        trajectory_mem.write_data(self._upload_done)
-
-        while not self._is_done:
-            time.sleep(0.2)
-
-    def _upload_done(self, mem, addr):
-        print('Data uploaded')
-        self._is_done = True
 
 def reset_estimator(cf):
     cf.param.set_value('kalman.resetEstimation', '1')
@@ -178,40 +163,15 @@ def wait_for_position_estimator(scf):
     
     logger.disconnect
 
-def activate_high_level_commander(cf):
-    cf.param.set_value('commander.enHighLevel', '1')
-    cf.param.set_value('stabilizer.controller', '2')        
 
-def upload_trajectory(cf, trajectory_id, trajectory):
-    trajectory_mem = cf.mem.get_mems(MemoryElement.TYPE_TRAJ)[0]
+def smoothApproach(time):
 
-    total_duration = 0
-    for row in trajectory:
-        duration = row[0]
-        x = Poly4D.Poly(row[1:9])
-        y = Poly4D.Poly(row[9:17])
-        z = Poly4D.Poly(row[17:25])
-        yaw = Poly4D.Poly(row[25:33])
-        trajectory_mem.poly4Ds.append(Poly4D(duration, x, y, z, yaw))
-        total_duration += duration
+        a = -1.173333333
+        b = 3.348571429
+        c = -3.175238095
+        d = 1.000571429
 
-    Uploader().upload(trajectory_mem)
-    cf.high_level_commander.define_trajectory(trajectory_id, 0,
-                                              len(trajectory_mem.poly4Ds))
-    return total_duration
-
-def run_sequence(cf, trajectory_id, duration):
-    commander = cf.high_level_commander
-
-    print('Holding Position')
-    time.sleep(1.0)
-
-    #relative = True
-    #commander.start_trajectory(trajectory_id, 1.0, relative)
-    #time.sleep(duration)
-
-    commander.go_to(0.0, 0.0, 1.0, constPi, 2.0)
-    time.sleep(2.0)
+        return a * time*time*time + b * time*time + c * time + d
 
 """
   __  __       _       
@@ -243,22 +203,22 @@ if __name__ == '__main__':
         print('Taking off')
 
         # Run experiment
-        t = 0.0
-        h = 0.05
-        experimentTimeout = 30.0
-        timeIsUp = False
+        t = 0.0                     # Initial timestamp
+        h = 0.05                    # Sampling/Control Period
+        experimentTimeout = 20.0    # Time at which the experiment ends and landing starts
 
-        maxAngle = 5.0
-        angleFactor = 20.0
-        maxPos = 0.25
+        maxAngle = 5.0      # Maximum roll and pitch angle
+        angleFactor = 20.0  # Normalization for roll and pitch PIDs
+        maxPos = 0.25       # Maximum horizontal deviation during experiment
+
         #                      P    I    D
-        rollController  = PID(1.0, 0.01, 0.5, -maxAngle, maxAngle)
-        pitchController = PID(1.0, 0.01, 0.5, -maxAngle, maxAngle)
+        rollController  = PID(1.0, 0.01, 0.5, -maxAngle, maxAngle)  # PID instantiation for roll
+        pitchController = PID(1.0, 0.01, 0.5, -maxAngle, maxAngle)  # PID instantiation for pitch
         # yawController   = PID(1.0, 0.0, 0.3, -1e8     , 1e8)
 
-        thrustFactor = 33.03e3
+        thrustFactor = 33.03e3  # Thrust input at which the Crazyflie hovers. Makes the altitude PID zero output a neutral control.
 
-        altiController = PID(1.1e0, 7.0e-1,7.0e-1, -0.5, 65e3/2/thrustFactor)
+        altiController = PID(1.0e0, 7.0e-1,7.5e-1, -0.5, 65e3/2/thrustFactor)   # PID instantiation for altitude
 
         amplitude = 0.0
         period = 4
@@ -270,7 +230,7 @@ if __name__ == '__main__':
         timeAtAlti = 10.0
         altiReducStep = 0.1
 
-        alreadyChanged = False
+        alreadyChanged = True
 
         with open('CSV_landing.txt', mode='w', newline='') as csv_file:
 
@@ -298,6 +258,8 @@ if __name__ == '__main__':
 
                 rollController.updateControl(-flight.cfPos[1], 0.0)
                 pitchController.updateControl(flight.cfPos[0], 0.0)
+
+                zRef = max(min( 0.25*smoothApproach((t-10.0)/10.0), 0.25), 0.0) + 0.05
 
                 zOsc = zRef + amplitude * math.sin(omega * t)
                 zOscDot = omega * amplitude * math.cos(omega * t)
