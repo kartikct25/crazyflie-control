@@ -37,6 +37,7 @@ attiPlot(1).Color = 'r'; attiPlot(2).Color = 'g'; attiPlot(3).Color = 'b';
 attiPlot(4).Color = 'r'; attiPlot(5).Color = 'g'; attiPlot(6).Color = 'b';
 attiPlot(4).LineStyle = '--'; attiPlot(5).LineStyle = '--'; attiPlot(6).LineStyle = '--';
 axes = gca;
+xlabel('Time [s]');
 axes.XLim = [min(t) max(t)];
 yExtreme = max(max(abs(Euler)));
 axes.YLim = [-yExtreme yExtreme];
@@ -45,8 +46,10 @@ legend('\theta', '\phi', '\psi', '\theta_r', '\phi_r', '\psi_r');
 figure(3)
 [axes, controlPlot, posPlot] = plotyy(t, [T filteredT], t, [Pos(:,3) Refs(:,4)]);
 controlPlot(1).Color = 'm';
+controlPlot(2).LineStyle = '--';
 posPlot(1).Color = 'b'; posPlot(2).Color = 'k';
 posPlot(2).LineStyle = '--';
+xlabel('Time [s]');
 legend('Thrust','Filtered Thrust','Z','Z_r');
 axes(1).YLabel.String = 'Thrust';
 axes(1).XLim = [min(t) max(t)];
