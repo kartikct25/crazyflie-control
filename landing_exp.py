@@ -205,7 +205,7 @@ if __name__ == '__main__':
         # Run experiment
         t = 0.0                     # Initial timestamp
         h = 0.05                    # Sampling/Control Period
-        experimentTimeout = 10.0    # Time at which the experiment ends and landing starts
+        experimentTimeout = 30.0    # Time at which the experiment ends and landing starts
 
         maxAngle = 5.0      # Maximum roll and pitch angle
         angleFactor = 20.0  # Normalization for roll and pitch PIDs
@@ -224,7 +224,7 @@ if __name__ == '__main__':
         period = 4
         omega = 1/period * 2*math.pi
 
-        zRef = 0.60
+        zRef = 0.70
 
         lastAltiReduc = 0.0
         timeAtAlti = 5.0
@@ -276,7 +276,7 @@ if __name__ == '__main__':
                         0.0, thrustControl)
 
                 csv_log.writerow([t, flight.cfPos[0], flight.cfPos[1], flight.cfPos[2], flight.cfEuler[0], flight.cfEuler[1], flight.cfEuler[2], \
-                    pitchController.saturatedControl(), rollController.saturatedControl(), 0.0, zOsc, altiController.saturatedControl()])
+                    pitchController.saturatedControl(), rollController.saturatedControl(), 0.0, zOsc, altiController.saturatedControl(), flight.cfDownRange])
 
                 print('zRange {:1.3f}'.format(flight.cfDownRange*1e-3))
 
@@ -301,7 +301,7 @@ if __name__ == '__main__':
         print('Landing')
         t = time.time() - flight.flightStart
 
-        while (flight.cfPos[2] > 0.1) and ((t - flight.flightStart) < experimentTimeout + 2.0):
+        while (flight.cfPos[2] > 0.2) and ((t - flight.flightStart) < experimentTimeout + 2.0):
 
             rollController.updateControl(-flight.cfPos[1], 0.0)
             pitchController.updateControl(flight.cfPos[0], 0.0)

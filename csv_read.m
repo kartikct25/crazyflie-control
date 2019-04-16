@@ -10,6 +10,10 @@ Refs = CSV(:, 8:11);
 
 T = CSV(:, 12);
 
+downRange = CSV(:,13)*1e-3;
+
+estimatedGround = Pos(:,3) - downRange;
+
 window = round(size(T,1)/20);
 
 filteredT = filter(1/window*ones(1,window),[1], T);
@@ -18,7 +22,7 @@ filteredT = filter(1/window*ones(1,window),[1], T);
 set(0,'defaulttextInterpreter','latex')
 
 figure(1);
-[axes, xyPlot, zPlot] = plotyy(t, Pos(:,1:2), t, Pos(:,3) );
+[axes, xyPlot, zPlot] = plotyy(t, Pos(:,1:2), t, [Pos(:,3) estimatedGround] );
 xyPlot(1).Color = 'r'; xyPlot(2).Color = 'g'; zPlot(1).Color = 'b';
 legend('X','Y','Z');
 xlabel('Time [s]');
