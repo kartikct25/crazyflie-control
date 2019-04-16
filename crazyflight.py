@@ -16,13 +16,15 @@ class CrazyFlight:
     cfEuler = [0.0, 0.0, 0.0]
     cfHeading = 0.0
 
-    cfBattery = 0
+    # cfBattery = 0 // Test using instance variable declaration method
 
     cfInRange = []
 
     activeCFs = None
 
     def __init__(self, scf):
+        self.declareInstanceVariables()
+
         self.flightStart = time.time()
         print('Flight started on', time.ctime(self.flightStart))
         cfInRange = cflib.crtp.scan_interfaces()
@@ -32,6 +34,13 @@ class CrazyFlight:
 
         self.start_position_read(scf)
         # self.start_battery_read(scf)
+        self.startRanging(scf)
+
+    def declareInstanceVariables(self):
+        self.cfBattery = 0
+        self.cfDownRange = 0
+        self.logBattery = None
+        self.logRange = None
         
 
     def __del__(self):
@@ -75,9 +84,24 @@ class CrazyFlight:
         log_conf.data_received_cb.add_callback(self.battery_callback)
         log_conf.start()
 
+        self.logBattery = log_conf
+
     def battery_callback(self, timestamp, data, longconf):
         self.cfBattery = data['batteryLevel']
         self.cfBattery = data['pm.vbat']
+
+    def startRanging(self, scf):
+        log_conf = LogConfig(name='Range', period_in_ms=50)
+        log_conf.add_variable('range.zrange', 'uint16_t')
+
+        scf.cf.log.add_config(log_conf)
+        log_conf.data_received_cb.add_callback(self.range_callback)
+        log_conf.start()
+
+        self.logRange = log_conf
+
+    def range_callback(self, timestamp, data, logconf):
+        self.cfDownRange = data['range.zrange']
 
     def findCFs(self):
         available = cflib.crtp.scan_interfaces()
@@ -89,6 +113,11 @@ class CrazyFlight:
                 print(i[0])
         else:
             print('No Crazyflies found, cannot run example')
+
+    def removeLogBlocks(self, scf):
+        # self.logBattery.delete()
+        self.logRange.delete()
+        pass
 
     def resetFlightStartTime(self):
         self.flightStart = time.time()

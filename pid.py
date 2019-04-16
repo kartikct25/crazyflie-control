@@ -1,9 +1,32 @@
 #import numpy as np
 import time
-from collections import deque
-import itertools
 
 class PID:
+    histSize = 2
+
+    # minSat = 0.0
+    # maxSat = 1.0
+
+    # kP = 1.0
+    # kI = 0.1
+    # kD = -0.3
+
+    # output = 0.0
+    # outputHist = [0.0 for x in range(histSize)]
+
+    # outputP = 0.0
+    # outputI = 0.0
+    # outputD = 0.0
+
+    # errorHist = [0.0 for x in range(histSize)]
+    # timeHist = [0.0 for x in range(histSize)]
+
+    # integralState = 0.0
+
+    # lastUpdate = 0.0
+
+    # isRunning = False
+
     def __init__(self, kP = 1.0, kI = 0.1, kD = -0.3, minSat = -1e8, maxSat = 1e8):
         self.dFilterState = 0.0
         self.kP = kP
@@ -18,15 +41,14 @@ class PID:
 
         self.output = 0.0
 
+        self.outputHist = [0.0 for x in range(self.histSize)]
+
         self.outputP = 0.0
         self.outputI = 0.0
         self.outputD = 0.0
 
-        self.__histSize = None
-        self.__outputHist = deque()
-        self.__errorHist  = deque()
-        self.__timeHist   = deque()
-        self.setHistorySize(2)
+        self.errorHist = [0.0 for x in range(self.histSize)]
+        self.timeHist = [0.0 for x in range(self.histSize)]
 
         self.integralState = 0.0
 
@@ -34,27 +56,9 @@ class PID:
 
         self.isRunning = False
 
-        self.__timeHist[0] = time.time()
+        self.timeHist[0] = time.time()
 
-    def setHistorySize(self, size):
-        if (size < 0):
-            return
-        size_old = len(self.__outputHist)
-        if size_old < size:
-            tmp = (size - size_old) * [0]
-            self.__outputHist.extend(tmp)
-            self.__errorHist.extend(tmp)
-            self.__timeHist.extend(tmp)
-        elif size_old > size:
-            self.__outputHist = deque( itertools.slice(self.__outputHist, 0, size) )
-            self.__errorHist  = deque( itertools.slice(self.__outputHist, 0, size) )
-            self.timetHist  = deque( itertools.slice(self.__outputHist, 0, size) )
-        self.__histSize = size
-
-    def getHistorySize(self):
-        return self.__histSize
-
-    def updateControl(self, now, plantOutput, reference):
+    def updateControl(self, plantOutput = 0.0, reference = 0.0):
         # Compute Error
         error =  reference - plantOutput
 
@@ -63,27 +67,27 @@ class PID:
             lastDeltaT = 0.0
             self.isRunning = True
         else:
-            lastDeltaT = now - self.lastUpdate
-        self.lastUpdate = now
+            lastDeltaT = time.time() - self.lastUpdate
+        self.lastUpdate = time.time()
+
+        # Append it to history
+        for i in range(self.histSize-1, 0, -1):
+            self.errorHist[i] = self.errorHist[i - 1]
+            self.timeHist[i] = self.timeHist[i - 1]
+        self.errorHist[0] = error
+        self.timeHist[0] = self.lastUpdate
 
         # Compute Control Terms
         self.outputP = self.kP * error
-        self.outputD = self.kD * self.__differentiate()
-        self.integralState += self.__integrate()
+        self.outputD = self.kD * self.derivative()
+        self.integralState += self.integrate()
         self.outputI = self.kI * self.integralState
 
         # Compute Output
         self.output = self.outputP + self.outputI +  self.outputD
 
-        # Shift history and insert data
-        self.__errorHist.rotate(1)
-        self.__outputHist.rotate(1)
-        self.__timeHist.rotate(1)
-        self.__timeHist[0] = self.lastUpdate
-        self.__errorHist[0] = error
-        self.__outputHist[0] = self.output
-
     def saturatedControl(self):
+
         if (self.output < self.maxSat and self.output > self.minSat): # If the output is within bounds, no saturation needed
             return self.output
             
@@ -93,16 +97,17 @@ class PID:
             else: # If it is above the maximum saturation, use the maximum saturation
                 return self.maxSat
 
-    def __integrate(self):
-        if (self.output < self.maxSat and self.output > self.minSat) and self.__timeHist[1] != 0.0: # Only integrate if unsaturated.
-            return ((self.__errorHist[0] + self.__errorHist[1]) / 2 * (self.__timeHist[0] - self.__timeHist[1]))
+    def integrate(self):
+        if (self.output < self.maxSat and self.output > self.minSat) and self.timeHist[1] != 0.0: # Only integrate if unsaturated.
+            return ((self.errorHist[0] + self.errorHist[1]) / 2 * (self.timeHist[0] - self.timeHist[1]))
         else:
             return 0.0
 
-    def __differentiate(self):
-        if (self.__timeHist[0] != self.__timeHist[1]): # Case taken into consideration since it can produce division by zero
-            self.dFilterState = 0.4724 * self.dFilterState + 2.0 * self.__errorHist[0] # Discrete Filter implementation for h = 0.05 and N = 15
-            return (-3.9573 * self.dFilterState + 15.0 * self.__errorHist[0])
+    def derivative(self):
+        if (self.timeHist[0] != self.timeHist[1]): # Case taken into consideration since it can produce division by zero
+            # return ((self.errorHist[0] - self.errorHist[1]) / (self.timeHist[0] - self.timeHist[1]))
+            self.dFilterState = 0.4724 * self.dFilterState + 2.0 * self.errorHist[0] # Discrete Filter implementation for h = 0.05 and N = 15
+            return (-3.9573 * self.dFilterState + 15.0 * self.errorHist[0])
         else:
             return 0.0  # Should only happen in the first iteration of the controller. Unlikely to cause trouble.
 
@@ -125,7 +130,7 @@ if __name__ == '__main__':
     y = 0.1
     for i in range(0,10):
         y += controller.output/5
-        controller.updateControl(time.time(), y, reference)
+        controller.updateControl(y, reference)
     
         print('The control for the reference {:1.2f} when the output is {:1.2f} is {:1.2f} (P: {:1.2f}, I: {:1.2f}, D: {:1.2f})'.format(reference,y, controller.output, controller.outputP, controller.outputI, controller.outputD))
 

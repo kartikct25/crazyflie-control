@@ -60,8 +60,8 @@ from cflib.crazyflie.syncLogger import SyncLogger
                                             
 # URI to the Crazyflie to connect to
 uri1 = 'radio://0/80/2M'
-uri2 = 'radio://0/85/2M'
-uri1 = 'radio://0/100/2M'
+uri1 = 'radio://0/85/2M'
+uri3 = 'radio://0/100/2M'
 
 constPi = math.pi
 
@@ -205,30 +205,30 @@ if __name__ == '__main__':
         # Run experiment
         t = 0.0                     # Initial timestamp
         h = 0.05                    # Sampling/Control Period
-        experimentTimeout = 20.0    # Time at which the experiment ends and landing starts
+        experimentTimeout = 10.0    # Time at which the experiment ends and landing starts
 
         maxAngle = 5.0      # Maximum roll and pitch angle
         angleFactor = 20.0  # Normalization for roll and pitch PIDs
         maxPos = 0.25       # Maximum horizontal deviation during experiment
 
         #                      P    I    D
-        rollController  = PID(1.0, 0.01, 0.5, -maxAngle, maxAngle)  # PID instantiation for roll
-        pitchController = PID(1.0, 0.01, 0.5, -maxAngle, maxAngle)  # PID instantiation for pitch
+        rollController  = PID(1.2, 0.01, 0.5, -maxAngle, maxAngle)  # PID instantiation for roll
+        pitchController = PID(1.2, 0.01, 0.5, -maxAngle, maxAngle)  # PID instantiation for pitch
         # yawController   = PID(1.0, 0.0, 0.3, -1e8     , 1e8)
 
         thrustFactor = 33.03e3  # Thrust input at which the Crazyflie hovers. Makes the altitude PID zero output a neutral control.
 
-        altiController = PID(1.0e0, 7.0e-1,7.5e-1, -0.5, 65e3/2/thrustFactor)   # PID instantiation for altitude
+        altiController = PID(0.5e0, 3.5e-1,6.5e-1, -0.5, 65e3/2/thrustFactor)   # PID instantiation for altitude
 
         amplitude = 0.0
         period = 4
         omega = 1/period * 2*math.pi
 
-        zRef = 0.50
+        zRef = 0.60
 
         lastAltiReduc = 0.0
-        timeAtAlti = 10.0
-        altiReducStep = 0.1
+        timeAtAlti = 5.0
+        altiReducStep = 0.3
 
         alreadyChanged = True
 
@@ -238,15 +238,14 @@ if __name__ == '__main__':
 
             flight.resetFlightStartTime()
 
-            cf.param.set_value('ground.level', '{:1.16f}'.format(0.0))
+            # cf.param.set_value('ground.level', '{:1.16f}'.format(0.0))
 
             while (t < experimentTimeout):
                 
                 # Control cycle start
-
                 controlCycleStart = time.time()
 
-                if flight.cfPos[2] > 0.6 or flight.cfPos[2] < -0.05:
+                if flight.cfPos[2] > 1.0 or flight.cfPos[2] < -0.3:
                     print('Abnormal altitude ({:1.2f})'.format(flight.cfPos[2]))
                     break
 
@@ -259,7 +258,7 @@ if __name__ == '__main__':
                 rollController.updateControl(-flight.cfPos[1], 0.0)
                 pitchController.updateControl(flight.cfPos[0], 0.0)
 
-                zRef = max(min( 0.25*smoothApproach((t-10.0)/10.0), 0.25), 0.0) + 0.05
+                # zRef = max(min( 0.20*smoothApproach((t-10.0)/10.0), 0.20), 0.0) + 0.1
 
                 zOsc = zRef + amplitude * math.sin(omega * t)
                 zOscDot = omega * amplitude * math.cos(omega * t)
@@ -279,10 +278,12 @@ if __name__ == '__main__':
                 csv_log.writerow([t, flight.cfPos[0], flight.cfPos[1], flight.cfPos[2], flight.cfEuler[0], flight.cfEuler[1], flight.cfEuler[2], \
                     pitchController.saturatedControl(), rollController.saturatedControl(), 0.0, zOsc, altiController.saturatedControl()])
 
+                print('zRange {:1.3f}'.format(flight.cfDownRange*1e-3))
+
                 if ((t - lastAltiReduc) >= timeAtAlti) and (alreadyChanged == False):
                     zRef -= altiReducStep
                     lastAltiReduc = math.floor(t)
-                    amplitude = 0.1
+                    amplitude = 0.0
                     alreadyChanged = True
 
                 # Control cycle end
@@ -316,6 +317,8 @@ if __name__ == '__main__':
             t = time.time() - flight.flightStart
 
         cf.commander.send_setpoint(0.0, 0.0, 0.0, 0)
+
+        flight.removeLogBlocks(scf)
 
         time.sleep(0.1)
         flight.__del__
