@@ -76,7 +76,7 @@ constPi = math.pi
 
 def reset_estimator(cf):
     cf.param.set_value('kalman.resetEstimation', '1')
-    time.sleep(0.2)
+    time.sleep(0.5)
     cf.param.set_value('kalman.resetEstimation', '0')
 
     cf.param.set_value('kalman.initialX', '{:1.16f}'.format(0.00))
@@ -197,7 +197,9 @@ if __name__ == '__main__':
 
         alreadyChanged = True
 
+        fftHistSize = 100
         downHist = []
+        fftFreq = np.fft.fftfreq((np.arange(fftHistSize)*h).shape[-1])
 
         with open('CSV_landing.txt', mode='w', newline='') as csv_file:
 
@@ -212,7 +214,7 @@ if __name__ == '__main__':
                 # Control cycle start
                 controlCycleStart = time.time()
 
-                if flight.cfPos[2] > 1.0 or flight.cfPos[2] < -0.3:
+                if flight.cfPos[2] > 1.0 or flight.cfPos[2] < -0.5:
                     print('Abnormal altitude ({:1.2f})'.format(flight.cfPos[2]))
                     break
 
@@ -254,11 +256,13 @@ if __name__ == '__main__':
                     alreadyChanged = True
 
                 # FFT
-                if len(downHist) <= 100:
+                if len(downHist) < fftHistSize:
                     downHist.extend([flight.cfDownRange])
                 else:
                     downHist = np.roll(downHist, -1)
                     downHist[-1] = flight.cfDownRange
+
+                    fftSpectrum = np.fft.fft(downHist)
 
                 # Control cycle end
 
@@ -299,6 +303,11 @@ if __name__ == '__main__':
         time.sleep(0.1)
 
         print(downHist)
+
+        if len(downHist) == fftHistSize:
+            import matplotlib.pyplot as plt
+            plt.plot(fftFreq, fftSpectrum.real, fftFreq, fftSpectrum.imag)
+            plt.show()
 
 """
    _____          _        ______           _ 
